@@ -7,7 +7,7 @@ The bot will scrape the top 5 inclusive exchanges on [CoinMarketCap](https://coi
 
 From this data, it will build a dictionary with accumulators as values for the number of unique coins it finds in these data.
 
-On every sixth day, it will utilize this list to make purchase orders which it will execute at market closing.
+On every sixth day, it will utilize this list to make purchase orders which it will execute at market closing. It will repeat this action every 7 days from this point thereafter.
 
 On the forteenth day, and every seven days thereafter, it will execute sell orders for coins which have `> 20%` return from those coins purchased on day six. It will only sell the return profit (principle x return as decimal) every seventh day in cycle. It will repeat this every six days thereafter.
 
