@@ -1,5 +1,5 @@
 # jackpot-go
-An exchange trading bot for demonstration purposes. I am taking on this product for learning the go language to work on other contributions with API/http requests on future endeavors.
+An exchange trading bot for demonstration purposes. I am taking on this project for learning the go language to work on other contributions with API/http requests on future endeavors.
 
 ## Pseudocode
 
