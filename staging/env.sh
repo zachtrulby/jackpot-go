@@ -1474,7 +1474,6 @@ router.post('/config', (req, res) => {
 module.exports = router;
 EOF
 # src/routes/health.js
-#TODO: Create health check route
 cat > src/routes/health.js << 'EOF'
 const express = require('express');
 const router = express.Router();
@@ -1498,6 +1497,553 @@ router.post('/config', (req, res) => {
 });
 router.use((err, req, res, next) => {
   logger.error('Health Check Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/user.js
+cat > src/routes/user.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+router.get('/', (req, res) => {
+  res.json({ status: 'success', message: 'User route is working' });
+});
+router.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  // Simulate user authentication
+  if (username === 'test' && password === 'password') {
+    res.json({ status: 'success', message: 'Login successful', user: { id: 1, username } });
+  } else {
+    res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+  }
+});
+router.post('/register', (req, res) => {
+  const { username, password } = req.body;
+  // Simulate user registration
+  if (username && password) {
+    res.json({ status: 'success', message: 'User registered successfully', user: { id: 2, username } });
+  } else {
+    res.status(400).json({ status: 'error', message: 'Username and password are required' });
+  }
+});
+router.get('/profile', (req, res) => {
+  // Simulate fetching user profile
+  res.json({ status: 'success', user: { id: 1, username: 'test', email: 'test@example.com' } });
+});
+router.put('/profile', (req, res) => {
+  const { email } = req.body;
+  // Simulate updating user profile
+  if (email) {
+    res.json({ status: 'success', message: 'Profile updated successfully', user: { id: 1, username: 'test', email } });
+  } else {
+    res.status(400).json({ status: 'error', message: 'Email is required' });
+  }
+});
+router.delete('/profile', (req, res) => {
+  // Simulate deleting user profile
+  res.json({ status: 'success', message: 'Profile deleted successfully' });
+});
+router.use((err, req, res, next) => {
+  logger.error('User Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/strategy.js
+cat > src/routes/strategy.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const strategies = Array.from(tradingEngine.strategies.values());
+  res.json({ status: 'success', data: strategies });
+});
+router.post('/create', (req, res) => {
+  const { name, type, parameters } = req.body;
+  if (!name || !type) {
+    return res.status(400).json({ status: 'error', message: 'Name and type are required' });
+  }
+  const strategyId = Date.now();
+  tradingEngine.strategies.set(strategyId, { id: strategyId, name, type, parameters, isActive: false });
+  res.json({ status: 'success', message: 'Strategy created', strategyId });
+});
+router.post('/activate', (req, res) => {
+  const { strategyId } = req.body;
+  const strategy = tradingEngine.strategies.get(strategyId);
+  if (!strategy) {
+    return res.status(404).json({ status: 'error', message: 'Strategy not found' });
+  }
+  strategy.isActive = true;
+  res.json({ status: 'success', message: 'Strategy activated' });
+});
+router.post('/deactivate', (req, res) => {
+  const { strategyId } = req.body;
+  const strategy = tradingEngine.strategies.get(strategyId);
+  if (!strategy) {
+    return res.status(404).json({ status: 'error', message: 'Strategy not found' });
+  }
+  strategy.isActive = false;
+  res.json({ status: 'success', message: 'Strategy deactivated' });
+});
+router.get('/:strategyId', (req, res) => {
+  const { strategyId } = req.params;
+  const strategy = tradingEngine.strategies.get(parseInt(strategyId));
+  if (!strategy) {
+    return res.status(404).json({ status: 'error', message: 'Strategy not found' });
+  }
+  res.json({ status: 'success', data: strategy });
+});
+router.delete('/:strategyId', (req, res) => {
+  const { strategyId } = req.params;
+  if (!tradingEngine.strategies.has(parseInt(strategyId))) {
+    return res.status(404).json({ status: 'error', message: 'Strategy not found' });
+  }
+  tradingEngine.strategies.delete(parseInt(strategyId));
+  res.json({ status: 'success', message: 'Strategy deleted' });
+});
+router.use((err, req, res, next) => {
+  logger.error('Strategy Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/market-data.js
+cat > src/routes/market-data.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const marketData = Array.from(tradingEngine.marketData.values());
+  res.json({ status: 'success', data: marketData });
+});
+router.get('/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  const data = tradingEngine.marketData.get(symbol);
+  if (!data) {
+    return res.status(404).json({ status: 'error', message: 'Market data not found' });
+  }
+  res.json({ status: 'success', data });
+});
+router.post('/update', (req, res) => {
+  const { symbol, price, volume } = req.body;
+  if (!symbol || !price || !volume) {
+    return res.status(400).json({ status: 'error', message: 'Symbol, price, and volume are required' });
+  }
+  tradingEngine.marketData.set(symbol, { symbol, price, volume, timestamp: new Date() });
+  res.json({ status: 'success', message: 'Market data updated' });
+});
+router.delete('/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  if (!tradingEngine.marketData.has(symbol)) {
+    return res.status(404).json({ status: 'error', message: 'Market data not found' });
+  }
+  tradingEngine.marketData.delete(symbol);
+  res.json({ status: 'success', message: 'Market data deleted' });
+});
+router.use((err, req, res, next) => {
+  logger.error('Market Data Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/trade.js
+cat > src/routes/trade.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const trades = Array.from(tradingEngine.activeOrders.values());
+  res.json({ status: 'success', data: trades });
+});
+router.get('/:tradeId', (req, res) => {
+  const { tradeId } = req.params;
+  const trade = tradingEngine.activeOrders.get(parseInt(tradeId));
+  if (!trade) {
+    return res.status(404).json({ status: 'error', message: 'Trade not found' });
+  }
+  res.json({ status: 'success', data: trade });
+});
+router.post('/execute', async (req, res) => {
+  const { symbol, side, quantity, price } = req.body;
+  if (!symbol || !side || !quantity || !price) {
+    return res.status(400).json({ status: 'error', message: 'Symbol, side, quantity, and price are required' });
+  }
+  try {
+    const trade = await tradingEngine.executeTrade(symbol, side, quantity, price);
+    res.json({ status: 'success', data: trade });
+  } catch (error) {
+    logger.error('Failed to execute trade:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.post('/cancel', async (req, res) => {
+  const { tradeId } = req.body;
+  if (!tradeId) {
+    return res.status(400).json({ status: 'error', message: 'Trade ID is required' });
+  }
+  try {
+    const result = await tradingEngine.cancelTrade(tradeId);
+    res.json({ status: 'success', data: result });
+  } catch (error) {
+    logger.error('Failed to cancel trade:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/history', async (req, res) => {
+  try {
+    const history = await tradingEngine.getTradeHistory();
+    res.json({ status: 'success', data: history });
+  } catch (error) {
+    logger.error('Failed to fetch trade history:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.use((err, req, res, next) => {
+  logger.error('Trade Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/signal.js
+cat > src/routes/signal.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const signals = Array.from(tradingEngine.activeOrders.values());
+  res.json({ status: 'success', data: signals });
+});
+router.get('/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  const signal = tradingEngine.activeOrders.get(symbol);
+  if (!signal) {
+    return res.status(404).json({ status: 'error', message: 'Signal not found' });
+  }
+  res.json({ status: 'success', data: signal });
+});
+router.post('/create', async (req, res) => {
+  const { symbol, action, confidence } = req.body;
+  if (!symbol || !action || !confidence) {
+    return res.status(400).json({ status: 'error', message: 'Symbol, action, and confidence are required' });
+  }
+  try {
+    const signal = await tradingEngine.createSignal(symbol, action, confidence);
+    res.json({ status: 'success', data: signal });
+  } catch (error) {
+    logger.error('Failed to create signal:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.post('/execute', async (req, res) => {
+  const { symbol, action } = req.body;
+  if (!symbol || !action) {
+    return res.status(400).json({ status: 'error', message: 'Symbol and action are required' });
+  }
+  try {
+    const result = await tradingEngine.executeSignal(symbol, action);
+    res.json({ status: 'success', data: result });
+  } catch (error) {
+    logger.error('Failed to execute signal:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/history', async (req, res) => {
+  try {
+    const history = await tradingEngine.getSignalHistory();
+    res.json({ status: 'success', data: history });
+  } catch (error) {
+    logger.error('Failed to fetch signal history:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.use((err, req, res, next) => {
+  logger.error('Signal Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/portfolio.js
+cat > src/routes/portfolio.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const portfolio = Array.from(tradingEngine.positions.values());
+  res.json({ status: 'success', data: portfolio });
+});
+router.get('/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  const position = tradingEngine.positions.get(symbol);
+  if (!position) {
+    return res.status(404).json({ status: 'error', message: 'Position not found' });
+  }
+  res.json({ status: 'success', data: position });
+});
+router.post('/add', async (req, res) => {
+  const { symbol, quantity, price } = req.body;
+  if (!symbol || !quantity || !price) {
+    return res.status(400).json({ status: 'error', message: 'Symbol, quantity, and price are required' });
+  }
+  try {
+    const position = await tradingEngine.addPosition(symbol, quantity, price);
+    res.json({ status: 'success', data: position });
+  } catch (error) {
+    logger.error('Failed to add position:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.post('/update', async (req, res) => {
+  const { symbol, quantity, price } = req.body;
+  if (!symbol || !quantity || !price) {
+    return res.status(400).json({ status: 'error', message: 'Symbol, quantity, and price are required' });
+  }
+  try {
+    const position = await tradingEngine.updatePosition(symbol, quantity, price);
+    res.json({ status: 'success', data: position });
+  } catch (error) {
+    logger.error('Failed to update position:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.delete('/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  if (!tradingEngine.positions.has(symbol)) {
+    return res.status(404).json({ status: 'error', message: 'Position not found' });
+  }
+  try {
+    await tradingEngine.removePosition(symbol);
+    res.json({ status: 'success', message: 'Position removed' });
+  } catch (error) {
+    logger.error('Failed to remove position:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/performance', async (req, res) => {
+  try {
+    const performance = await tradingEngine.calculatePortfolioPerformance();
+    res.json({ status: 'success', data: performance });
+  } catch (error) {
+    logger.error('Failed to calculate portfolio performance:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.use((err, req, res, next) => {
+  logger.error('Portfolio Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/performance.js
+cat > src/routes/performance.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', async (req, res) => {
+  try {
+    const performance = await tradingEngine.calculatePerformance();
+    res.json({ status: 'success', data: performance });
+  } catch (error) {
+    logger.error('Failed to calculate performance:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/history', async (req, res) => {
+  try {
+    const history = await tradingEngine.getPerformanceHistory();
+    res.json({ status: 'success', data: history });
+  } catch (error) {
+    logger.error('Failed to fetch performance history:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/metrics', async (req, res) => {
+  try {
+    const metrics = await tradingEngine.getPerformanceMetrics();
+    res.json({ status: 'success', data: metrics });
+  } catch (error) {
+    logger.error('Failed to fetch performance metrics:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.use((err, req, res, next) => {
+  logger.error('Performance Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/sentiment.js
+cat > src/routes/sentiment.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const sentimentService = require('../services/sentiment');
+const logger = require('../utils/logger');
+router.get('/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  try {
+    const sentiment = await sentimentService.analyze(symbol);
+    res.json({ status: 'success', data: sentiment });
+  } catch (error) {
+    logger.error('Failed to analyze sentiment:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/initialize', async (req, res) => {
+  try {
+    await sentimentService.initialize();
+    res.json({ status: 'success', message: 'Sentiment service initialized' });
+  } catch (error) {
+    logger.error('Failed to initialize sentiment service:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.use((err, req, res, next) => {
+  logger.error('Sentiment Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/risk.js
+cat > src/routes/risk.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const risks = tradingEngine.calculateRiskMetrics();
+  res.json({ status: 'success', data: risks });
+});
+router.get('/exposure', (req, res) => {
+  const exposure = tradingEngine.calculateExposure();
+  res.json({ status: 'success', data: exposure });
+});
+router.get('/limits', (req, res) => {
+  const limits = tradingEngine.getRiskLimits();
+  res.json({ status: 'success', data: limits });
+});
+router.post('/limits', (req, res) => {
+  const { maxExposure, maxDrawdown } = req.body;
+  if (maxExposure < 0 || maxDrawdown < 0) {
+    return res.status(400).json({ status: 'error', message: 'Limits must be non-negative' });
+  }
+  tradingEngine.setRiskLimits(maxExposure, maxDrawdown);
+  res.json({ status: 'success', message: 'Risk limits updated' });
+});
+router.get('/history', async (req, res) => {
+  try {
+    const history = await tradingEngine.getRiskHistory();
+    res.json({ status: 'success', data: history });
+  } catch (error) {
+    logger.error('Failed to fetch risk history:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.use((err, req, res, next) => {
+  logger.error('Risk Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/notification.js
+cat > src/routes/notification.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const notificationService = require('../services/notification');
+router.post('/send', async (req, res) => {
+  const { type, message, recipient } = req.body;
+  if (!type || !message || !recipient) {
+    return res.status(400).json({ status: 'error', message: 'Type, message, and recipient are required' });
+  }
+  try {
+    await notificationService.sendNotification(type, message, recipient);
+    res.json({ status: 'success', message: 'Notification sent successfully' });
+  } catch (error) {
+    logger.error('Failed to send notification:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/history', async (req, res) => {
+  try {
+    const history = await notificationService.getNotificationHistory();
+    res.json({ status: 'success', data: history });
+  } catch (error) {
+    logger.error('Failed to fetch notification history:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+router.get('/status', (req, res) => {
+  res.json({ status: 'success', message: 'Notification service is running' });
+});
+router.use((err, req, res, next) => {
+  logger.error('Notification Route Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
+EOF
+# src/routes/exchange.js
+cat > src/routes/exchange.js << 'EOF'
+const express = require('express');
+const router = express.Router();
+const logger = require('../utils/logger');
+const tradingEngine = require('../trading/engine');
+router.get('/', (req, res) => {
+  const exchanges = Array.from(tradingEngine.exchanges.values());
+  res.json({ status: 'success', data: exchanges });
+});
+router.get('/:exchangeId', (req, res) => {
+  const { exchangeId } = req.params;
+  const exchange = tradingEngine.exchanges.get(exchangeId);
+  if (!exchange) {
+    return res.status(404).json({ status: 'error', message: 'Exchange not found' });
+  }
+  res.json({ status: 'success', data: exchange });
+});
+router.post('/create', (req, res) => {
+  const { name, type, apiKey, secret } = req.body;
+  if (!name || !type || !apiKey || !secret) {
+    return res.status(400).json({ status: 'error', message: 'Name, type, API key, and secret are required' });
+  }
+  const exchangeId = Date.now();
+  tradingEngine.exchanges.set(exchangeId, { id: exchangeId, name, type, apiKey, secret });
+  res.json({ status: 'success', message: 'Exchange created', exchangeId });
+});
+router.post('/update', (req, res) => {
+  const { exchangeId, name, type, apiKey, secret } = req.body;
+  const exchange = tradingEngine.exchanges.get(exchangeId);
+  if (!exchange) {
+    return res.status(404).json({ status: 'error', message: 'Exchange not found' });
+  }
+  exchange.name = name || exchange.name;
+  exchange.type = type || exchange.type;
+  exchange.apiKey = apiKey || exchange.apiKey;
+  exchange.secret = secret || exchange.secret;
+  res.json({ status: 'success', message: 'Exchange updated', data: exchange });
+});
+router.delete('/:exchangeId', (req, res) => {
+  const { exchangeId } = req.params;
+  if (!tradingEngine.exchanges.has(exchangeId)) {
+    return res.status(404).json({ status: 'error', message: 'Exchange not found' });
+  }
+  tradingEngine.exchanges.delete(exchangeId);
+  res.json({ status: 'success', message: 'Exchange deleted' });
+});
+router.get('/status', (req, res) => {
+  const exchangeStatus = Array.from(tradingEngine.exchanges.values()).map(exchange => ({
+    id: exchange.id,
+    name: exchange.name,
+    status: 'active' // Placeholder for actual status check
+  }));
+  res.json({ status: 'success', data: exchangeStatus });
+});
+router.use((err, req, res, next) => {
+  logger.error('Exchange Route Error:', err);
   res.status(500).json({ status: 'error', message: 'Internal Server Error' });
 });
 module.exports = router;

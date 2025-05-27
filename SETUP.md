@@ -1,46 +1,76 @@
-# Getting Started with `jackpot-go`
+# Project Setup Guide
 
-Follow these steps to set up and run the project locally or in your CI/CD pipeline.
+Follow these steps to get your trading bot system up and running:
 
 ## 1. Clone the Repository
 
 ```sh
-git clone https://github.com/zachtrulby/jackpot-go.git
-cd jackpot-go
+git clone https://github.com/your-org/jackpot-go.git
+cd jackpot-go/trading-bot-system
 ```
 
-## 2. Set Up Environment Variables
+## 2. Configure Environment Variables
 
-Create a `.env` file in the project root. Copy the contents from `.env.example` if available:
+Copy the example environment file and edit as needed:
 
 ```sh
-cp .env.example .env
+cp ../staging/.env.example .env
+# Edit .env to set your secrets and API keys
 ```
 
-Edit `.env` to set the required environment variables for your environment.
+## 3. Build and Start Dependencies
 
-## 3. Build the Project (Staging)
-
-To build the project for staging, use the provided script:
+Make sure Docker and Docker Compose are installed.
 
 ```sh
-cd staging
-./src.sh
+docker-compose up -d
 ```
 
-This script will handle the build process as configured for the staging environment.
+This will start:
+- PostgreSQL (with TimescaleDB)
+- Redis
+- The trading bot server
 
-## 4. Running in a Pipeline
-
-Ensure your pipeline loads environment variables from `.env` before running the build script. For example, in a shell step:
+## 4. Install Node and Python Dependencies (if running locally)
 
 ```sh
-export $(grep -v '^#' .env | xargs)
-cd staging
-./src.sh
+npm install
+pip3 install -r requirements.txt
 ```
 
-## 5. Additional Notes
+## 5. Build the Project
 
-- Make sure all dependencies are installed as required by the project.
-- Refer to project-specific documentation for further configuration or deployment steps.
+```sh
+npm run build
+```
+
+## 6. Start the Application
+
+```sh
+npm start
+```
+
+Or, for development with hot reload:
+
+```sh
+npm run dev
+```
+
+## 7. Access the API
+
+- REST API: [http://localhost:3000/api](http://localhost:3000/api)
+- Health check: [http://localhost:3000/health](http://localhost:3000/health)
+
+## 8. Logs
+
+Logs are written to `logs/app.log` and can be tailed with:
+
+```sh
+docker-compose logs -f
+```
+
+---
+
+**Note:**  
+- Update `.env` with your actual API keys and secrets before running in production.
+- For troubleshooting, check the logs and ensure all services are healthy.
