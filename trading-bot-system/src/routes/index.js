@@ -1,0 +1,35 @@
+const express = require('express');
+const router = express.Router();
+const tradingRoutes = require('./trading');
+router.use('/trading', tradingRoutes);
+const healthRoutes = require('./health');
+router.use('/health', healthRoutes);
+const userRoutes = require('./user');
+router.use('/user', userRoutes);
+const strategyRoutes = require('./strategy');
+router.use('/strategy', strategyRoutes);
+const marketDataRoutes = require('./market-data');
+router.use('/market-data', marketDataRoutes);
+const tradeRoutes = require('./trade');
+router.use('/trade', tradeRoutes);
+const signalRoutes = require('./signal');
+router.use('/signal', signalRoutes);
+const portfolioRoutes = require('./portfolio');
+router.use('/portfolio', portfolioRoutes);
+const performanceRoutes = require('./performance');
+router.use('/performance', performanceRoutes);
+const sentimentRoutes = require('./sentiment');
+router.use('/sentiment', sentimentRoutes);
+const riskRoutes = require('./risk');
+router.use('/risk', riskRoutes);
+const redisRoutes = require('./redis');
+router.use('/redis', redisRoutes);
+const logger = require('../utils/logger');
+router.get('/', (req, res) => {
+  res.json({ message: 'Welcome to the Trading Bot API' });
+});
+router.use((err, req, res, next) => {
+  logger.error('API Error:', err);
+  res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+});
+module.exports = router;
